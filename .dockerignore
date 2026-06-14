@@ -15,11 +15,15 @@ blossom/
 
 # Dev environment
 .env
+.DS_Store
 .github/
 .vscode/
 
 # Top-level node_modules (none should exist, but guard against accidental copy)
 /node_modules/
+startos/node_modules/
+startos/javascript/
+startos/*.s9pk
 
 # Ignore just the built client.js — it will be built in the container
 public/client.js
