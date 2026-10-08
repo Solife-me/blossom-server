@@ -8,9 +8,9 @@
  * streams to exact byte counts across chunk-boundary scenarios.
  */
 
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertRejects } from "@std/assert";
 import { parseRange } from "../../src/routes/blobs.ts";
-import { byteLimitTransform } from "../../src/utils/streams.ts";
+import { BYTE_LIMIT_ERROR, byteCapGuard, byteLimitTransform } from "../../src/utils/streams.ts";
 
 // ---------------------------------------------------------------------------
 // parseRange — RFC 9110 single-range forms
@@ -45,6 +45,31 @@ Deno.test("parseRange: suffix range equal to file size (bytes=-1000)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// parseRange — RFC 9110 §14.1.2 clamping
+// ---------------------------------------------------------------------------
+
+Deno.test("parseRange: end past EOF is clamped to the last byte", () => {
+  assertEquals(parseRange("bytes=0-1000", 1000), { start: 0, end: 999 });
+});
+
+Deno.test("parseRange: end far past EOF is clamped to the last byte", () => {
+  assertEquals(parseRange("bytes=500-999999", 1000), { start: 500, end: 999 });
+});
+
+Deno.test("parseRange: nginx-style aligned slice past EOF is clamped", () => {
+  // `slice 1m` asks for bytes=1048576-2097151 on a 1111411-byte file: the
+  // start is inside the file, so the range is satisfiable and clamps to EOF.
+  assertEquals(parseRange("bytes=1048576-2097151", 1111411), {
+    start: 1048576,
+    end: 1111410,
+  });
+});
+
+Deno.test("parseRange: suffix longer than the file selects the whole file", () => {
+  assertEquals(parseRange("bytes=-5000", 1000), { start: 0, end: 999 });
+});
+
+// ---------------------------------------------------------------------------
 // parseRange — unsatisfiable / invalid inputs → null
 // ---------------------------------------------------------------------------
 
@@ -52,12 +77,20 @@ Deno.test("parseRange: start > end is unsatisfiable", () => {
   assertEquals(parseRange("bytes=100-99", 1000), null);
 });
 
-Deno.test("parseRange: end >= totalSize is unsatisfiable", () => {
-  assertEquals(parseRange("bytes=0-1000", 1000), null);
-});
-
 Deno.test("parseRange: start equals totalSize is unsatisfiable", () => {
   assertEquals(parseRange("bytes=1000-1000", 1000), null);
+});
+
+Deno.test("parseRange: start past totalSize is unsatisfiable", () => {
+  assertEquals(parseRange("bytes=1500-2000", 1000), null);
+});
+
+Deno.test("parseRange: open-end range starting past EOF is unsatisfiable", () => {
+  assertEquals(parseRange("bytes=1000-", 1000), null);
+});
+
+Deno.test("parseRange: suffix range on a 0-byte file is unsatisfiable", () => {
+  assertEquals(parseRange("bytes=-5", 0), null);
 });
 
 Deno.test("parseRange: suffix of 0 (bytes=-0) is unsatisfiable", () => {
@@ -192,4 +225,67 @@ Deno.test("byteLimitTransform: limit larger than stream — all bytes pass throu
     makeStream(data).pipeThrough(byteLimitTransform(100)),
   );
   assertEquals(result, data);
+});
+
+// ---------------------------------------------------------------------------
+// byteCapGuard — stream-side upload size cap (errors, never truncates)
+// ---------------------------------------------------------------------------
+
+function cappedStream(...chunks: Uint8Array[]): ReadableStream<Uint8Array> {
+  return new ReadableStream({
+    start(controller) {
+      for (const c of chunks) controller.enqueue(c);
+      controller.close();
+    },
+  });
+}
+
+async function countBytes(stream: ReadableStream<Uint8Array>): Promise<number> {
+  let total = 0;
+  for await (const chunk of stream) total += chunk.byteLength;
+  return total;
+}
+
+Deno.test("byteCapGuard: stream under the limit passes through intact", async () => {
+  const out = cappedStream(new Uint8Array(40), new Uint8Array(40))
+    .pipeThrough(byteCapGuard(100));
+  assertEquals(await countBytes(out), 80);
+});
+
+Deno.test("byteCapGuard: stream exactly at the limit passes (declared size is legitimate)", async () => {
+  const out = cappedStream(new Uint8Array(60), new Uint8Array(40))
+    .pipeThrough(byteCapGuard(100));
+  assertEquals(await countBytes(out), 100);
+});
+
+Deno.test("byteCapGuard: stream exceeding the limit errors with the sentinel", async () => {
+  // Simulates a lying Content-Length: declared 100, actually streams 120.
+  const out = cappedStream(new Uint8Array(60), new Uint8Array(60))
+    .pipeThrough(byteCapGuard(100));
+  await assertRejects(() => countBytes(out), Error, BYTE_LIMIT_ERROR);
+});
+
+Deno.test("byteCapGuard: single oversized chunk errors immediately", async () => {
+  const out = cappedStream(new Uint8Array(1000)).pipeThrough(byteCapGuard(100));
+  await assertRejects(() => countBytes(out), Error, BYTE_LIMIT_ERROR);
+});
+
+Deno.test("byteCapGuard: limit 0 rejects any non-empty body", async () => {
+  const out = cappedStream(new Uint8Array(1)).pipeThrough(byteCapGuard(0));
+  await assertRejects(() => countBytes(out), Error, BYTE_LIMIT_ERROR);
+});
+
+Deno.test("byteCapGuard: cancelling the transformed stream cancels its source", async () => {
+  let cancelled = false;
+  const source = new ReadableStream<Uint8Array>({
+    cancel() {
+      cancelled = true;
+    },
+  });
+  const out = source.pipeThrough(byteCapGuard(100));
+
+  await out.cancel();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assertEquals(cancelled, true);
 });

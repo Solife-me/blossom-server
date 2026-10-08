@@ -32,7 +32,7 @@ const S3StorageSchema = z.object({
   endpoint: z
     .string()
     .describe(
-      'S3-compatible endpoint URL, e.g. "https://s3.amazonaws.com" or "https://nyc3.digitaloceanspaces.com".',
+      "S3-compatible endpoint URL.",
     ),
   bucket: z.string().describe("Name of the S3 bucket to store blobs in."),
   accessKey: z.string().describe(
@@ -311,12 +311,11 @@ const VideoOptimizeSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["videoCodec"],
-        message:
-          `videoCodec "${v.videoCodec}" is not compatible with format "${v.format}". Valid codecs: ${
-            validVideo.join(
-              ", ",
-            )
-          }.`,
+        message: `videoCodec "${v.videoCodec}" is not compatible with format "${v.format}". Valid codecs: ${
+          validVideo.join(
+            ", ",
+          )
+        }.`,
       });
     }
     const validAudio = AUDIO_CODEC_FOR_FORMAT[v.format] as readonly string[];
@@ -324,12 +323,11 @@ const VideoOptimizeSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["audioCodec"],
-        message:
-          `audioCodec "${v.audioCodec}" is not compatible with format "${v.format}". Valid codecs: ${
-            validAudio.join(
-              ", ",
-            )
-          }.`,
+        message: `audioCodec "${v.audioCodec}" is not compatible with format "${v.format}". Valid codecs: ${
+          validAudio.join(
+            ", ",
+          )
+        }.`,
       });
     }
   });
@@ -344,6 +342,12 @@ const MediaSchema = z.object({
   requireAuth: z.boolean().default(true).describe(
     "Require a valid BUD-11 Nostr auth event for media uploads.",
   ),
+  requirePubkeyInRule: z
+    .boolean()
+    .default(true)
+    .describe(
+      "When true, media uploads are rejected unless the uploader's pubkey appears in a matching storage rule's pubkeys list.",
+    ),
   maxSize: z
     .number()
     .int()
@@ -351,6 +355,12 @@ const MediaSchema = z.object({
     .default(1024 * 1024 * 1024)
     .describe(
       "Maximum input file size in bytes before reading the body. Default: 1 GB.",
+    ),
+  tmpDir: z
+    .string()
+    .default("./data/media-tmp")
+    .describe(
+      "Local directory used for optimized media and thumbnail temp files before committing them to the configured storage backend.",
     ),
   image: ImageOptimizeSchema.optional()
     .transform((v) => v ?? ImageOptimizeSchema.parse({}))
@@ -506,6 +516,14 @@ const PruneSchema = z.object({
     .describe(
       "Minimum gap in milliseconds between the end of one prune run and the start of the next. Uses recursive setTimeout, so the next run begins only after the current one completes. Default: 30 seconds.",
     ),
+  batchSize: z
+    .number()
+    .int()
+    .min(1)
+    .default(1000)
+    .describe(
+      "Maximum blobs examined per rule per prune cycle. Bounds the cost of a cycle by configuration rather than by the size of the store; any remainder is picked up on the next cycle. Default: 1000.",
+    ),
 });
 
 export const DatabaseSchema = z.object({
@@ -594,9 +612,7 @@ export const ConfigSchema = z
     // Priority: database.path > databasePath > default "data/sqlite.db"
     const database = DatabaseSchema.parse({
       ...raw.database,
-      ...(raw.database?.path === undefined && raw.databasePath !== undefined
-        ? { path: raw.databasePath }
-        : {}),
+      ...(raw.database?.path === undefined && raw.databasePath !== undefined ? { path: raw.databasePath } : {}),
     });
     const { databasePath: _dropped, ...rest } = raw;
     return { ...rest, database };

@@ -2,7 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "@hono/hono/jsx/dom";
 import type { BlobDescriptor, FileStatus, UploadFile } from "./types.ts";
 import { blobExists, HttpError, preflightUpload, xhrUpload } from "./api.ts";
 import { hashBatch, MAX_X_TAGS_PER_EVENT, signBatch } from "./auth.ts";
-import { createClientId, friendlyErrorMessage, isMediaFile } from "./helpers.ts";
+import { ensureIdentity } from "./identity.ts";
+import {
+  createClientId,
+  friendlyErrorMessage,
+  isMediaFile,
+} from "./helpers.ts";
 import { FileRow } from "./FileRow.tsx";
 
 const MAX_RETRIES = 3;
@@ -235,7 +240,6 @@ export function UploadForm({
         (id, status) => patchFile(id, { status }),
       );
 
-      // Phase 1: Preflight all files concurrently
       const toUpload: UploadFile[] = [];
       const preflightBatch = async (uf: UploadFile) => {
         const proceed = await checkOne(uf, hashes.get(uf.id)!, undefined);
@@ -247,7 +251,6 @@ export function UploadForm({
         );
       }
 
-      // Phase 2: Upload files that passed preflight
       const uploadWithSlot = (uf: UploadFile) => {
         activeCount.current = (activeCount.current ?? 0) + 1;
         return uploadOne(uf, undefined).finally(() => {
@@ -262,17 +265,8 @@ export function UploadForm({
       return;
     }
 
-    // deno-lint-ignore no-explicit-any
-    const nostr = (globalThis as any).nostr;
-    if (!nostr) {
-      for (const uf of pending) {
-        patchFile(uf.id, {
-          status: "error",
-          error: "No Nostr extension detected. Install Alby or nos2x.",
-        });
-      }
-      return;
-    }
+    // Whatever the user signed in with, or a generated key. Never prompts.
+    const signer = ensureIdentity();
 
     const regularPending = pending.filter((f) => !f.optimize);
     const mediaPending = pending.filter((f) => f.optimize);
@@ -298,7 +292,7 @@ export function UploadForm({
 
         let authHeader: string;
         try {
-          authHeader = await signBatch(nostr, batchHashes, verb, content);
+          authHeader = await signBatch(signer, batchHashes, verb, content);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           for (const uf of batch) {
@@ -452,11 +446,7 @@ export function UploadForm({
           : (
             <div class="space-y-2">
               <p class="text-gray-300">Drop files here or click to select</p>
-              <p class="text-xs text-gray-500">
-                {requireAuth
-                  ? "Nostr extension required to sign uploads"
-                  : "No auth required"}
-              </p>
+              <p class="text-xs text-gray-500">No sign-up required</p>
             </div>
           )}
       </label>

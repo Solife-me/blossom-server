@@ -28,9 +28,9 @@ function getBlobUrl(
   host: string,
 ): string {
   const ext = mimeToExt(type);
-  const base = config.publicDomain
-    ? `https://${config.publicDomain.replace(/\/$/, "")}`
-    : `http://${host}`;
+  const scheme = config.publicDomain ? "https" : "http";
+  const hostname = config.publicDomain?.replace(/\/$/, "") ?? host;
+  const base = `${scheme}://${hostname}`;
   return `${base}/${sha256}${ext ? "." + ext : ""}`;
 }
 
@@ -67,17 +67,13 @@ export const BlobsPage: FC<BlobsPageProps> = async (
     db.countBlobs(filter),
   ]);
 
-  const baseUrl = q
-    ? `/admin/blobs?q=${encodeURIComponent(q)}`
-    : "/admin/blobs";
+  const baseUrl = q ? `/admin/blobs?q=${encodeURIComponent(q)}` : "/admin/blobs";
 
   return (
     <AdminLayout title="Blobs" section="blobs">
       <PageHeader
         title="Blobs"
-        subtitle={`${total.toLocaleString()} total blob${
-          total !== 1 ? "s" : ""
-        }`}
+        subtitle={`${total.toLocaleString()} total blob${total !== 1 ? "s" : ""}`}
       />
 
       {/* Search form */}

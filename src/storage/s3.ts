@@ -78,10 +78,6 @@ export class S3Storage implements IBlobStorage {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Internal helpers
-  // ---------------------------------------------------------------------------
-
   private objectKey(hash: string, ext: string): string {
     return ext ? `${hash}.${ext}` : hash;
   }
@@ -89,10 +85,6 @@ export class S3Storage implements IBlobStorage {
   private tmpPath(id: string): string {
     return join(this.tmpDir, id);
   }
-
-  // ---------------------------------------------------------------------------
-  // IBlobStorage — read-side
-  // ---------------------------------------------------------------------------
 
   async has(hash: string, ext: string): Promise<boolean> {
     try {
@@ -171,10 +163,6 @@ export class S3Storage implements IBlobStorage {
     return Promise.resolve(null);
   }
 
-  // ---------------------------------------------------------------------------
-  // IBlobStorage — write-side (local tmp buffer)
-  // ---------------------------------------------------------------------------
-
   /**
    * Begin a write session. The body is written to local disk only.
    * Zero bytes are sent to S3 until commitWrite() is called.
@@ -191,22 +179,21 @@ export class S3Storage implements IBlobStorage {
     const writable = file.writable;
 
     // done resolves when the writable stream is closed (file fully written).
-    const done: Promise<void> =
-      (writable as WritableStream & { closed?: Promise<void> }).closed ??
-        new Promise<void>((resolve) => {
-          const interval = setInterval(async () => {
-            try {
-              const stat = await Deno.stat(path);
-              if (sizeHint !== null && stat.size >= sizeHint) {
-                clearInterval(interval);
-                resolve();
-              }
-            } catch {
+    const done: Promise<void> = (writable as WritableStream & { closed?: Promise<void> }).closed ??
+      new Promise<void>((resolve) => {
+        const interval = setInterval(async () => {
+          try {
+            const stat = await Deno.stat(path);
+            if (sizeHint !== null && stat.size >= sizeHint) {
               clearInterval(interval);
               resolve();
             }
-          }, 100);
-        });
+          } catch {
+            clearInterval(interval);
+            resolve();
+          }
+        }, 100);
+      });
 
     return { tmpPath: path, writable, done };
   }
@@ -231,14 +218,14 @@ export class S3Storage implements IBlobStorage {
    * Nothing is sent to or removed from S3.
    */
   async abortWrite(session: WriteSession): Promise<void> {
-    await Deno.remove(session.tmpPath).catch(() => {});
+    try {
+      await Deno.remove(session.tmpPath);
+    } catch (err) {
+      if (err instanceof Deno.errors.NotFound) return;
+      throw err;
+    }
   }
 
-  /**
-   * Commit an already-written local file to S3 as the final blob.
-   * Used by the media route after optimization: the optimized output is a
-   * local file that needs to be transferred to S3 and then removed.
-   */
   async commitFile(srcPath: string, hash: string, ext: string): Promise<void> {
     await this._uploadToS3AndCleanup(srcPath, hash, ext);
   }
@@ -251,10 +238,6 @@ export class S3Storage implements IBlobStorage {
       return false;
     }
   }
-
-  // ---------------------------------------------------------------------------
-  // Private: stream local file → S3 then delete local file
-  // ---------------------------------------------------------------------------
 
   private async _uploadToS3AndCleanup(
     srcPath: string,
@@ -273,9 +256,7 @@ export class S3Storage implements IBlobStorage {
     const t2 = Date.now();
     if (alreadyExists) {
       debug(
-        `[s3:commit] dedup hit — skipping putObject hash=${hash} elapsed=${
-          t2 - t1
-        }ms`,
+        `[s3:commit] dedup hit — skipping putObject hash=${hash} elapsed=${t2 - t1}ms`,
       );
       await Deno.remove(srcPath).catch(() => {});
       return;
@@ -294,9 +275,7 @@ export class S3Storage implements IBlobStorage {
       });
       const t4 = Date.now();
       debug(
-        `[s3:commit] putObject complete key=${key} elapsed=${t4 - t3}ms total=${
-          t4 - t0
-        }ms`,
+        `[s3:commit] putObject complete key=${key} elapsed=${t4 - t3}ms total=${t4 - t0}ms`,
       );
     } finally {
       // Some stream consumers may already close the file descriptor.
@@ -314,9 +293,7 @@ export class S3Storage implements IBlobStorage {
       await Deno.remove(srcPath).catch(() => {});
       const t6 = Date.now();
       debug(
-        `[s3:commit] removed local tmp file elapsed=${t6 - t5}ms total=${
-          t6 - t0
-        }ms`,
+        `[s3:commit] removed local tmp file elapsed=${t6 - t5}ms total=${t6 - t0}ms`,
       );
     }
   }

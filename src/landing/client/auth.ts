@@ -1,7 +1,11 @@
-import type { FileStatus, UploadFile } from "./types.ts";
+import type { FileStatus, NostrProvider, Signer, UploadFile } from "./types.ts";
 import { sha256Hex } from "./helpers.ts";
 
 export const MAX_X_TAGS_PER_EVENT = 60;
+
+export function getNostrProvider(): NostrProvider | undefined {
+  return globalThis.nostr;
+}
 
 /**
  * Hash all files in the batch sequentially, reporting status as each starts.
@@ -22,14 +26,13 @@ export async function hashBatch(
 
 /** Build a BUD-11 kind 24242 auth event covering a batch of hashes. */
 export async function signBatch(
-  // deno-lint-ignore no-explicit-any
-  nostr: any,
+  signer: Signer,
   hashes: string[],
   authVerb: string,
   content: string,
 ): Promise<string> {
   const expiration = Math.floor(Date.now() / 1000) + 300;
-  const authEvent = await nostr.signEvent({
+  const authEvent = await signer.signEvent({
     kind: 24242,
     content,
     created_at: Math.floor(Date.now() / 1000),

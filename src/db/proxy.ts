@@ -11,12 +11,7 @@
 
 import type { DbRequest, DbResponse } from "./bridge.ts";
 import type { IDbHandle } from "./handle.ts";
-import type {
-  AdminBlobRecord,
-  AdminUserRecord,
-  BlobRecord,
-  BlobStats,
-} from "./blobs.ts";
+import type { AdminBlobRecord, AdminUserRecord, BlobRecord, BlobStats } from "./blobs.ts";
 import type { ReportRecord } from "./reports.ts";
 
 interface PendingRequest {
@@ -54,10 +49,6 @@ export class DbProxy implements IDbHandle {
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Core blob ops
-  // ---------------------------------------------------------------------------
-
   hasBlob(sha256: string): Promise<boolean> {
     return this.call<boolean>("hasBlob", [sha256]);
   }
@@ -77,10 +68,6 @@ export class DbProxy implements IDbHandle {
   getStats(): Promise<BlobStats> {
     return this.call<BlobStats>("getStats", []);
   }
-
-  // ---------------------------------------------------------------------------
-  // Admin blob ops
-  // ---------------------------------------------------------------------------
 
   listAllBlobs(
     opts?: Parameters<IDbHandle["listAllBlobs"]>[0],
@@ -119,10 +106,6 @@ export class DbProxy implements IDbHandle {
   countBlobsByPubkey(pubkey: string): Promise<number> {
     return this.call<number>("countBlobsByPubkey", [pubkey]);
   }
-
-  // ---------------------------------------------------------------------------
-  // Admin report ops
-  // ---------------------------------------------------------------------------
 
   listAllReports(
     opts?: Parameters<IDbHandle["listAllReports"]>[0],

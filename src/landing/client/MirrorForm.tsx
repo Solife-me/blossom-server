@@ -1,11 +1,8 @@
-// ---------------------------------------------------------------------------
-// MirrorForm — URL input + mirror queue for BUD-04 PUT /mirror.
-// ---------------------------------------------------------------------------
-
 import { useCallback, useEffect, useRef, useState } from "@hono/hono/jsx/dom";
 import type { MirrorItem, MirrorStatus } from "./types.ts";
 import { HttpError, mirrorPut } from "./api.ts";
 import { MAX_X_TAGS_PER_EVENT, signBatch } from "./auth.ts";
+import { ensureIdentity } from "./identity.ts";
 import { createClientId, parseBlossomRef } from "./helpers.ts";
 import { MirrorRow } from "./MirrorRow.tsx";
 
@@ -149,17 +146,7 @@ export function MirrorForm({
       return;
     }
 
-    // deno-lint-ignore no-explicit-any
-    const nostr = (globalThis as any).nostr;
-    if (!nostr) {
-      for (const it of pending) {
-        patchItem(it.id, {
-          status: "error",
-          error: "No Nostr extension detected. Install Alby or nos2x.",
-        });
-      }
-      return;
-    }
+    const signer = ensureIdentity();
 
     for (let i = 0; i < pending.length; i += MAX_X_TAGS_PER_EVENT) {
       const batch = pending.slice(i, i + MAX_X_TAGS_PER_EVENT);
@@ -169,7 +156,7 @@ export function MirrorForm({
 
       let authHeader: string;
       try {
-        authHeader = await signBatch(nostr, hashes, "upload", "Mirror blobs");
+        authHeader = await signBatch(signer, hashes, "upload", "Mirror blobs");
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         for (const it of batch) {
@@ -208,7 +195,6 @@ export function MirrorForm({
   const existsCount = items.filter((it) => it.status === "exists").length;
   const errorCount = items.filter((it) => it.status === "error").length;
 
-  // ---- Phase: input --------------------------------------------------------
   if (phase === "input") {
     return (
       <div class="p-6 space-y-4">
@@ -245,7 +231,6 @@ export function MirrorForm({
     );
   }
 
-  // ---- Phase: list ---------------------------------------------------------
   return (
     <div class="p-6 space-y-4">
       <div class="flex items-center justify-between">

@@ -18,9 +18,30 @@ import { optionalAuth } from "../middleware/auth.ts";
 import type { BlossomVariables } from "../middleware/auth.ts";
 import { errorResponse } from "../middleware/errors.ts";
 import type { Config } from "../config/schema.ts";
-import { mimeToExt } from "../utils/mime.ts";
+import { isActiveContentMime, mimeToExt } from "../utils/mime.ts";
 
-const SHA256_RE = /^[0-9a-f]{64}$/;
+const BLOB_PATH_RE = /^([0-9a-f]{64})(?:\.[a-z0-9]{1,10})*$/i;
+
+/** Extract and normalize the content address from an accepted blob filename. */
+export function extractBlobHash(filename: string): string | null {
+  return BLOB_PATH_RE.exec(filename)?.[1]?.toLowerCase() ?? null;
+}
+
+/** Compare If-None-Match candidates using RFC 9110 weak entity-tag comparison. */
+export function ifNoneMatchMatches(headerValue: string | undefined, etag: string): boolean {
+  if (headerValue === undefined) return false;
+
+  const value = headerValue.trim();
+  if (value === "*") return true;
+
+  const candidates = value.split(",").map((candidate) => candidate.trim());
+  if (candidates.includes("*")) return false;
+
+  return candidates.some((candidate) => {
+    const opaqueTag = candidate.startsWith("W/") ? candidate.slice(2) : candidate;
+    return opaqueTag === etag;
+  });
+}
 
 export function buildBlobsRouter(
   db: Client,
@@ -32,13 +53,11 @@ export function buildBlobsRouter(
   // GET /:sha256 and GET /:sha256.ext
   // HEAD /:sha256 and HEAD /:sha256.ext
   // Match the full segment including optional extension (e.g. abc123...def.jpg)
-  app.on(["GET", "HEAD"], "/:filename", async (ctx, next) => {
+  app.on(["GET", "HEAD"], ["/:filename", "/:filename/"], async (ctx, next) => {
     const filename = ctx.req.param("filename") ?? "";
-    // Extract 64-char hex hash — the last 64-char hex run in the segment
-    const match = filename.match(/([0-9a-f]{64})/);
-    const hash = match?.[1] ?? "";
+    const hash = extractBlobHash(filename);
 
-    if (!SHA256_RE.test(hash)) {
+    if (!hash) {
       return next();
     }
 
@@ -54,19 +73,15 @@ export function buildBlobsRouter(
       return errorResponse(ctx, 404, "Blob not found");
     }
 
-    // Derive the extension the file was stored with
     const ext = mimeToExt(blob.type);
 
-    // Check storage has the actual file
     if (!(await storage.has(hash, ext))) {
       return errorResponse(ctx, 404, "Blob not found in storage");
     }
 
     // Update last-access timestamp (for prune rules) — fire-and-forget
     const now = Math.floor(Date.now() / 1000);
-    touchBlob(db, hash, now).catch((err) =>
-      console.warn("touchBlob failed:", err)
-    );
+    touchBlob(db, hash, now).catch((err) => console.warn("touchBlob failed:", err));
 
     const mimeType = blob.type ?? "application/octet-stream";
     const headers: Record<string, string> = {
@@ -76,23 +91,30 @@ export function buildBlobsRouter(
       "Cache-Control": "public, max-age=31536000, immutable",
       ETag: `"${hash}"`,
       "Last-Modified": new Date(blob.uploaded * 1000).toUTCString(),
+      "X-Content-Type-Options": "nosniff",
     };
+
+    if (isActiveContentMime(blob.type)) {
+      const safeExt = /^[a-z0-9]{1,10}$/i.test(ext) ? ext.toLowerCase() : "";
+      const attachmentName = `${hash}${safeExt ? `.${safeExt}` : ""}`;
+      headers["Content-Disposition"] = `attachment; filename="${attachmentName}"`;
+    }
 
     // Conditional request: If-None-Match (RFC 9110 §13.1.2)
     // The SHA-256 hash is a perfect ETag — content-addressed, immutable, already computed.
     // Short-circuit before storage I/O: only the DB lookup has occurred at this point.
     const ifNoneMatch = ctx.req.header("if-none-match");
-    if (ifNoneMatch) {
-      const tags = ifNoneMatch.split(",").map((t) =>
-        t.trim().replace(/^"(.*)"$/, "$1")
-      );
-      if (tags.includes(hash) || tags.includes("*")) {
-        return ctx.body(null, 304, {
-          ETag: headers["ETag"],
-          "Cache-Control": headers["Cache-Control"],
-          "Last-Modified": headers["Last-Modified"],
-        });
-      }
+    if (ifNoneMatchMatches(ifNoneMatch, headers["ETag"])) {
+      const notModifiedHeaders: Record<string, string> = {
+        ETag: headers["ETag"],
+        "Cache-Control": headers["Cache-Control"],
+        "Last-Modified": headers["Last-Modified"],
+        "X-Content-Type-Options": headers["X-Content-Type-Options"],
+      };
+      const disposition = headers["Content-Disposition"];
+      if (disposition) notModifiedHeaders["Content-Disposition"] = disposition;
+
+      return ctx.body(null, 304, notModifiedHeaders);
     }
 
     if (ctx.req.method === "HEAD") {
@@ -133,7 +155,20 @@ export function buildBlobsRouter(
   return app;
 }
 
-/** Parse a Range: bytes=start-end header. Returns null for unsatisfiable ranges. */
+/**
+ * Parse a `Range: bytes=start-end` header. Returns null for unsatisfiable ranges.
+ *
+ * Per RFC 9110 §14.1.2, a last-byte-pos at or beyond the end of the
+ * representation is clamped to the last byte rather than rejected, and a
+ * suffix-length longer than the representation selects the whole thing. Only a
+ * first-byte-pos at or past the end makes a range unsatisfiable.
+ *
+ * Clamping is what lets range-slicing caches work. nginx's slice module, for
+ * one, asks for fixed-size aligned slices (`bytes=1048576-2097151`), so the
+ * final slice of any file that isn't an exact multiple of the slice size always
+ * runs past EOF. Answering 416 there makes the cache abort mid-file and hand
+ * the client a truncated body.
+ */
 export function parseRange(
   header: string,
   totalSize: number,
@@ -147,15 +182,20 @@ export function parseRange(
   if (isNaN(start) && isNaN(end)) return null;
 
   if (isNaN(start)) {
-    // Suffix range: bytes=-500 → last 500 bytes
-    start = totalSize - end;
+    // Suffix range: bytes=-500 → last 500 bytes. A suffix-length of 0 selects
+    // nothing and is unsatisfiable; one longer than the file selects all of it.
+    if (end === 0) return null;
+    start = Math.max(0, totalSize - end);
     end = totalSize - 1;
   } else if (isNaN(end)) {
     // Open range: bytes=500- → from byte 500 to end
     end = totalSize - 1;
+  } else if (end >= totalSize) {
+    // Explicit range running past EOF → clamp to the last byte
+    end = totalSize - 1;
   }
 
-  if (start < 0 || end >= totalSize || start > end) return null;
+  if (start >= totalSize || start > end) return null;
   return { start, end };
 }
 

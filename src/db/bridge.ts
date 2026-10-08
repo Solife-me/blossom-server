@@ -26,17 +26,7 @@ import {
   listAllUsers,
   listBlobsByPubkeyAdmin,
 } from "./blobs.ts";
-import {
-  countReports,
-  deleteReport,
-  deleteReportsByBlob,
-  getReport,
-  listAllReports,
-} from "./reports.ts";
-
-// ---------------------------------------------------------------------------
-// Wire types (structured-cloned over MessageChannel)
-// ---------------------------------------------------------------------------
+import { countReports, deleteReport, deleteReportsByBlob, getReport, listAllReports } from "./reports.ts";
 
 export type DbRequest =
   | { reqId: number; op: "hasBlob"; args: [sha256: string] }
@@ -95,10 +85,6 @@ export interface DbResponse {
   result?: unknown;
   error?: string;
 }
-
-// ---------------------------------------------------------------------------
-// Bridge installer
-// ---------------------------------------------------------------------------
 
 /**
  * Install a DB bridge on a MessagePort.

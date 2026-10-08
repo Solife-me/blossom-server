@@ -25,5 +25,6 @@ startos/node_modules/
 startos/javascript/
 startos/*.s9pk
 
-# Ignore just the built client.js — it will be built in the container
+# Ignore generated landing assets — they will be built in the container
 public/client.js
+public/styles.css

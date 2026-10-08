@@ -1,14 +1,3 @@
-/**
- * Nostr profile metadata lookup for the admin dashboard.
- *
- * Exports bare module-level singletons following the standard applesauce
- * pattern. The event loader is wired at module-load time; lookup relays are
- * held in a BehaviorSubject so they can be updated at any point without
- * recreating the loader.
- *
- * This module is only imported when the admin dashboard is enabled.
- */
-
 import { castUser } from "applesauce-common/casts";
 import { EventStore } from "applesauce-core/event-store";
 import type { ProfileContent } from "applesauce-core/helpers";
@@ -50,7 +39,8 @@ export async function fetchUserProfile(
 ): Promise<ProfileContent | null> {
   try {
     const user = castUser(pubkey, eventStore);
-    return await user.profile$.$first(timeout, null);
+    const profile = await user.profile$.$first(timeout, null);
+    return profile?.metadata ?? null;
   } catch {
     return null;
   }
@@ -72,10 +62,13 @@ export async function fetchUserProfiles(
 
   const promiseMap: Record<string, Promise<ProfileContent | null>> = {};
   for (const pubkey of pubkeys) {
-    promiseMap[pubkey] = castUser(pubkey, eventStore).profile$.$first(
-      timeout,
-      null,
-    );
+    promiseMap[pubkey] = (async () => {
+      const profile = await castUser(pubkey, eventStore).profile$.$first(
+        timeout,
+        null,
+      );
+      return profile?.metadata ?? null;
+    })();
   }
 
   try {

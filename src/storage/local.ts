@@ -10,7 +10,9 @@ import { byteLimitTransform } from "../utils/streams.ts";
  * Blobs with no known extension stored as: <dir>/<sha256>
  * Temp files written to: <dir>/.tmp/<ulid>
  *
- * Both paths are on the same filesystem, so Deno.rename() is always atomic.
+ * Upload temp and final paths are on the same filesystem, so commitWrite()
+ * can always use an atomic Deno.rename(). commitFile() also accepts external
+ * temp files and falls back to copy + destination-side rename across filesystems.
  * The DB is the index: look up sha256 → get type → derive ext → open <sha256>.<ext>.
  */
 export class LocalStorage implements IBlobStorage {
@@ -106,23 +108,22 @@ export class LocalStorage implements IBlobStorage {
 
     // done resolves when the writable stream is closed (file fully written)
     // writable.closed is a Promise that resolves when the stream is closed
-    const done: Promise<void> =
-      (writable as WritableStream & { closed?: Promise<void> }).closed ??
-        new Promise<void>((resolve) => {
-          // Fallback: poll — but Deno file.writable should have .closed
-          const interval = setInterval(async () => {
-            try {
-              const stat = await Deno.stat(path);
-              if (sizeHint !== null && stat.size >= sizeHint) {
-                clearInterval(interval);
-                resolve();
-              }
-            } catch {
+    const done: Promise<void> = (writable as WritableStream & { closed?: Promise<void> }).closed ??
+      new Promise<void>((resolve) => {
+        // Fallback: poll — but Deno file.writable should have .closed
+        const interval = setInterval(async () => {
+          try {
+            const stat = await Deno.stat(path);
+            if (sizeHint !== null && stat.size >= sizeHint) {
               clearInterval(interval);
               resolve();
             }
-          }, 100);
-        });
+          } catch {
+            clearInterval(interval);
+            resolve();
+          }
+        }, 100);
+      });
 
     return { tmpPath: path, writable, done };
   }
@@ -145,15 +146,15 @@ export class LocalStorage implements IBlobStorage {
   }
 
   async abortWrite(session: WriteSession): Promise<void> {
-    await Deno.remove(session.tmpPath).catch(() => {});
+    try {
+      await Deno.remove(session.tmpPath);
+    } catch (err) {
+      if (err instanceof Deno.errors.NotFound) return;
+      throw err;
+    }
   }
 
-  /**
-   * Commit an already-written local file as a blob.
-   * For local storage: atomically rename srcPath to the final blob path.
-   * Equivalent to commitWrite but for files produced outside the
-   * beginWrite/commitWrite cycle (e.g. media optimization output).
-   */
+  /** Commit an already-written local file as a blob. */
   async commitFile(srcPath: string, hash: string, ext: string): Promise<void> {
     const finalPath = this.blobPath(hash, ext);
 
@@ -162,7 +163,21 @@ export class LocalStorage implements IBlobStorage {
       return;
     }
 
-    await Deno.rename(srcPath, finalPath);
+    try {
+      await Deno.rename(srcPath, finalPath);
+    } catch (err) {
+      if (!isCrossDeviceLink(err)) throw err;
+
+      const localTmpPath = this.tmpPath(`${ulid()}.commit`);
+      try {
+        await Deno.copyFile(srcPath, localTmpPath);
+        await Deno.rename(localTmpPath, finalPath);
+        await Deno.remove(srcPath).catch(() => {});
+      } catch (copyErr) {
+        await Deno.remove(localTmpPath).catch(() => {});
+        throw copyErr;
+      }
+    }
   }
 
   async remove(hash: string, ext: string): Promise<boolean> {
@@ -173,4 +188,11 @@ export class LocalStorage implements IBlobStorage {
       return false;
     }
   }
+}
+
+function isCrossDeviceLink(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+
+  const message = err.message.toLowerCase();
+  return message.includes("cross-device") || message.includes("os error 18");
 }

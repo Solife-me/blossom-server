@@ -8,8 +8,12 @@ config.yml
 dist
 .netrc
 public/client.js
+public/styles.css
+result
 .planning
 .claude
 startos/javascript/
 startos/node_modules/
 startos/*.s9pk
+vendor
+blossom-vm.qcow2

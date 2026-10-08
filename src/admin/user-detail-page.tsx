@@ -1,6 +1,5 @@
-import type { FC } from "@hono/hono/jsx";
-import type { IDbHandle } from "../db/handle.ts";
-import type { BlobRecord } from "../db/handle.ts";
+import type { Child, FC } from "@hono/hono/jsx";
+import type { BlobRecord, IDbHandle } from "../db/handle.ts";
 import { nip19 } from "nostr-tools";
 import { fetchUserProfile } from "./nostr-profile.ts";
 import {
@@ -28,27 +27,30 @@ interface UserDetailPageProps {
   page: number;
 }
 
+const BackToUsersLink: FC = () => (
+  <div class="mb-4">
+    <a href="/admin/users" class="text-sm text-gray-500 hover:text-gray-300">
+      ← Back to Users
+    </a>
+  </div>
+);
+
+const UserNotFound: FC<{ children?: Child }> = ({ children }) => (
+  <AdminLayout title="User not found" section="users">
+    <BackToUsersLink />
+    <PageHeader title="User not found" />
+    <p class="text-gray-400 text-sm">{children}</p>
+  </AdminLayout>
+);
+
 export const UserDetailPage: FC<UserDetailPageProps> = async (
   { db, pubkey, page },
 ) => {
-  // Validate pubkey is a 64-char hex string
   if (!/^[0-9a-f]{64}$/i.test(pubkey)) {
     return (
-      <AdminLayout title="User not found" section="users">
-        <div class="mb-4">
-          <a
-            href="/admin/users"
-            class="text-sm text-gray-500 hover:text-gray-300"
-          >
-            ← Back to Users
-          </a>
-        </div>
-        <PageHeader title="User not found" />
-        <p class="text-gray-400 text-sm">
-          Invalid pubkey:{" "}
-          <code class="font-mono text-purple-400">{pubkey}</code>
-        </p>
-      </AdminLayout>
+      <UserNotFound>
+        Invalid pubkey: <code class="font-mono text-purple-400">{pubkey}</code>
+      </UserNotFound>
     );
   }
 
@@ -65,21 +67,9 @@ export const UserDetailPage: FC<UserDetailPageProps> = async (
 
   if (total === 0 && page === 1) {
     return (
-      <AdminLayout title="User not found" section="users">
-        <div class="mb-4">
-          <a
-            href="/admin/users"
-            class="text-sm text-gray-500 hover:text-gray-300"
-          >
-            ← Back to Users
-          </a>
-        </div>
-        <PageHeader title="User not found" />
-        <p class="text-gray-400 text-sm">
-          No blobs found for pubkey{" "}
-          <code class="font-mono text-purple-400 break-all">{pubkey}</code>
-        </p>
-      </AdminLayout>
+      <UserNotFound>
+        No blobs found for pubkey <code class="font-mono text-purple-400 break-all">{pubkey}</code>
+      </UserNotFound>
     );
   }
 
@@ -155,9 +145,7 @@ export const UserDetailPage: FC<UserDetailPageProps> = async (
         {/* About / bio */}
         {profile?.about && (
           <p class="text-sm text-gray-400 italic leading-relaxed line-clamp-3">
-            {profile.about.length > 280
-              ? profile.about.slice(0, 280) + "…"
-              : profile.about}
+            {profile.about.length > 280 ? profile.about.slice(0, 280) + "…" : profile.about}
           </p>
         )}
 
@@ -238,9 +226,7 @@ export const UserDetailPage: FC<UserDetailPageProps> = async (
                     </a>
                   </Td>
                   <Td>
-                    {blob.type
-                      ? <Badge color="blue">{blob.type}</Badge>
-                      : <span class="text-gray-600 text-xs">—</span>}
+                    {blob.type ? <Badge color="blue">{blob.type}</Badge> : <span class="text-gray-600 text-xs">—</span>}
                   </Td>
                   <Td>{formatBytes(blob.size)}</Td>
                   <Td>{formatDate(blob.uploaded)}</Td>
