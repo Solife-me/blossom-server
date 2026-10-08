@@ -1,3 +1,3 @@
-import { sdk } from "./sdk";
+import { sdk } from './sdk'
 
-export const { createBackup, restoreInit } = sdk.setupBackups(["main"]);
+export const { createBackup, restoreInit } = sdk.setupBackups(['main'])

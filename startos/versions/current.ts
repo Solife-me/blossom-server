@@ -1,21 +1,21 @@
-import { IMPOSSIBLE, VersionInfo } from "@start9labs/start-sdk";
+import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: "6.4.1:0",
+  version: '6.4.1:1',
   releaseNotes: {
     en_US:
-      "Updates Blossom Server to 6.4.1 with hardened uploads and media handling, mirror SSRF protection, safer active-content delivery, incremental pruning, identity improvements, and reliability fixes.",
+      'Repackages Blossom Server 6.4.1 with StartOS SDK 3.0.3, requiring StartOS 0.4.0.2 or later.',
     es_ES:
-      "Actualiza Blossom Server a 6.4.1 con cargas y medios reforzados, proteccion SSRF para espejos, entrega mas segura de contenido activo, poda incremental y mejoras de fiabilidad.",
+      'Reempaqueta Blossom Server 6.4.1 con StartOS SDK 3.0.3 y requiere StartOS 0.4.0.2 o posterior.',
     de_DE:
-      "Aktualisiert Blossom Server auf 6.4.1 mit gehaerteten Uploads, SSRF-Schutz fuer Spiegel, sichererer Auslieferung aktiver Inhalte, inkrementeller Bereinigung und Zuverlaessigkeitskorrekturen.",
+      'Packt Blossom Server 6.4.1 mit StartOS SDK 3.0.3 neu und erfordert StartOS 0.4.0.2 oder neuer.',
     pl_PL:
-      "Aktualizuje Blossom Server do 6.4.1 ze wzmocniona obsluga przesylania i mediow, ochrona SSRF dla lustrzanych pobran, bezpieczniejsza obsluga aktywnej tresci i poprawkami niezawodnosci.",
+      'Pakuje ponownie Blossom Server 6.4.1 z StartOS SDK 3.0.3 i wymaga StartOS 0.4.0.2 lub nowszego.',
     fr_FR:
-      "Met a jour Blossom Server vers 6.4.1 avec des televersements renforces, une protection SSRF pour les miroirs, une diffusion plus sure du contenu actif, un elagage incremental et des correctifs de fiabilite.",
+      'Reconditionne Blossom Server 6.4.1 avec StartOS SDK 3.0.3 et necessite StartOS 0.4.0.2 ou version ulterieure.',
   },
   migrations: {
     up: async () => {},
     down: IMPOSSIBLE,
   },
-});
+})

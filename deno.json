@@ -39,7 +39,7 @@
   },
   "fmt": {
     "lineWidth": 160,
-    "exclude": [".planning", ".gsd"]
+    "exclude": [".planning", ".gsd", "startos"]
   },
   "imports": {
     "@bradenmacdonald/s3-lite-client": "jsr:@bradenmacdonald/s3-lite-client@^0.9.5",

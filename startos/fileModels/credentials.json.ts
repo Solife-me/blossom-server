@@ -1,13 +1,13 @@
-import { FileHelper, z } from "@start9labs/start-sdk";
-import { sdk } from "../sdk";
+import { FileHelper, z } from '@start9labs/start-sdk'
+import { sdk } from '../sdk'
 
-export const credentialsShape = z.object({
-  dashboardGeneratedPassword: z.string().catch(""),
-});
+export const credentialsShape = z.looseObject({
+  dashboardGeneratedPassword: z.string().catch(''),
+})
 
-export type Credentials = z.infer<typeof credentialsShape>;
+export type Credentials = z.infer<typeof credentialsShape>
 
 export const credentialsJson = FileHelper.json(
-  { base: sdk.volumes.main, subpath: "start9/credentials.json" },
+  { base: sdk.volumes.main, subpath: 'start9/credentials.json' },
   credentialsShape,
-);
+)
