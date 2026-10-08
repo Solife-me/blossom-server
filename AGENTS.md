@@ -14,7 +14,8 @@ BUD-11 Nostr signed events (kind 24242). The admin dashboard is server-side rend
 
 ## Commands
 
-All commands use the **Deno** toolchain. There is no `package.json`.
+All application commands use the **Deno** toolchain. The root `package.json` exists only for compiling the StartOS package wrapper; it is not used by the
+application runtime.
 
 ```sh
 # Development (file-watching)

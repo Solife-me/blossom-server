@@ -93,14 +93,8 @@ const BLOB_DATA = new Uint8Array([
   19,
 ]);
 const BLOB_SIZE = BLOB_DATA.byteLength; // 20
-const EXACT_MAX_BYTE_PATH = `/${Array.from({ length: 8 }, () => "界".repeat(85)).join("/")}`;
-const OVER_MAX_BYTE_PATH = `/${
-  [
-    ...Array.from({ length: 7 }, () => "界".repeat(85)),
-    "界".repeat(42),
-    "界".repeat(43),
-  ].join("/")
-}`;
+const EXACT_MAX_BYTE_PATH = `/${["界".repeat(85), "界".repeat(85), `${"界".repeat(84)}aa`].join("/")}`;
+const OVER_MAX_BYTE_PATH = `/${["界".repeat(85), "界".repeat(85), `${"界".repeat(84)}aaa`].join("/")}`;
 
 let app: Hono<{ Variables: BlossomVariables }>;
 let db: Client;
@@ -197,13 +191,8 @@ Deno.test({
       await next();
     };
     const observedApp = await buildApp(db, storage, config, { staticMiddleware });
-    const exactMaxPath = `/${Array.from({ length: 8 }, () => "a".repeat(255)).join("/")}`;
-    const overMaxPath = `/${
-      [
-        ...Array.from({ length: 8 }, () => "a".repeat(226)),
-        "b".repeat(232),
-      ].join("/")
-    }`;
+    const exactMaxPath = `/${["a".repeat(255), "a".repeat(255), "a".repeat(254)].join("/")}`;
+    const overMaxPath = `/${["a".repeat(255), "a".repeat(255), "a".repeat(255)].join("/")}`;
 
     const safePaths = [
       "/nested/assets/app.js",

@@ -11,21 +11,10 @@
 import { assertEquals } from "@std/assert";
 import { getBaseUrl, isStaticCandidate } from "../../src/utils/url.ts";
 
-const EXACT_MAX_PATH = `/${Array.from({ length: 8 }, () => "a".repeat(255)).join("/")}`;
-const OVER_MAX_PATH = `/${
-  [
-    ...Array.from({ length: 8 }, () => "a".repeat(226)),
-    "b".repeat(232),
-  ].join("/")
-}`;
-const EXACT_MAX_BYTE_PATH = `/${Array.from({ length: 8 }, () => "界".repeat(85)).join("/")}`;
-const OVER_MAX_BYTE_PATH = `/${
-  [
-    ...Array.from({ length: 7 }, () => "界".repeat(85)),
-    "界".repeat(42),
-    "界".repeat(43),
-  ].join("/")
-}`;
+const EXACT_MAX_PATH = `/${["a".repeat(255), "a".repeat(255), "a".repeat(254)].join("/")}`;
+const OVER_MAX_PATH = `/${["a".repeat(255), "a".repeat(255), "a".repeat(255)].join("/")}`;
+const EXACT_MAX_BYTE_PATH = `/${["界".repeat(85), "界".repeat(85), `${"界".repeat(84)}aa`].join("/")}`;
+const OVER_MAX_BYTE_PATH = `/${["界".repeat(85), "界".repeat(85), `${"界".repeat(84)}aaa`].join("/")}`;
 const UTF8_ENCODER = new TextEncoder();
 
 Deno.test("getBaseUrl: no proxy headers — uses connection scheme", () => {
@@ -120,10 +109,10 @@ Deno.test("static byte-boundary fixtures isolate the decodeURI filesystem limits
 
   assertEquals(UTF8_ENCODER.encode(decodeURI(reservedAtLimit).slice(1)).byteLength, 255);
   assertEquals(UTF8_ENCODER.encode(decodeURI(reservedOverLimit).slice(1)).byteLength, 258);
-  assertEquals(UTF8_ENCODER.encode(decodeURI(EXACT_MAX_BYTE_PATH)).byteLength, 2_048);
-  assertEquals(UTF8_ENCODER.encode(decodeURI(OVER_MAX_BYTE_PATH)).byteLength, 2_049);
-  assertEquals([...decodeURIComponent(EXACT_MAX_BYTE_PATH)].length < 2_048, true);
-  assertEquals([...decodeURIComponent(OVER_MAX_BYTE_PATH)].length < 2_048, true);
+  assertEquals(UTF8_ENCODER.encode(decodeURI(EXACT_MAX_BYTE_PATH)).byteLength, 767);
+  assertEquals(UTF8_ENCODER.encode(decodeURI(OVER_MAX_BYTE_PATH)).byteLength, 768);
+  assertEquals([...decodeURIComponent(EXACT_MAX_BYTE_PATH)].length < 767, true);
+  assertEquals([...decodeURIComponent(OVER_MAX_BYTE_PATH)].length < 767, true);
 });
 
 const STATIC_CANDIDATE_PATHS = [
@@ -134,9 +123,9 @@ const STATIC_CANDIDATE_PATHS = [
   ["255-code-point segment", `/${"a".repeat(255)}`],
   ["63 non-BMP code points at 252 UTF-8 bytes", `/${"😀".repeat(63)}`],
   ["85 combining sequences at 255 UTF-8 bytes", `/${"e\u0301".repeat(85)}`],
-  ["2,048-code-point decoded path", EXACT_MAX_PATH],
+  ["767-code-point decoded path", EXACT_MAX_PATH],
   ["85 retained reserved escapes at 255 filesystem bytes", `/${"%3F".repeat(85)}`],
-  ["2,048-byte multisegment Unicode path", EXACT_MAX_BYTE_PATH],
+  ["767-byte multisegment Unicode path", EXACT_MAX_BYTE_PATH],
 ] as const;
 
 for (const [name, pathname] of STATIC_CANDIDATE_PATHS) {
@@ -166,9 +155,9 @@ const NON_CANDIDATE_PATHS = [
   ["64 non-BMP code points at 256 UTF-8 bytes", `/${"😀".repeat(64)}`],
   ["256 non-BMP code points", `/${"😀".repeat(256)}`],
   ["256 combining-sequence code points", `/${"e\u0301".repeat(128)}`],
-  ["a 2,049-code-point decoded path", OVER_MAX_PATH],
+  ["a 768-code-point decoded path", OVER_MAX_PATH],
   ["86 retained reserved escapes at 258 filesystem bytes", `/${"%3F".repeat(86)}`],
-  ["a 2,049-byte multisegment Unicode path", OVER_MAX_BYTE_PATH],
+  ["a 768-byte multisegment Unicode path", OVER_MAX_BYTE_PATH],
 ] as const;
 
 for (const [name, pathname] of NON_CANDIDATE_PATHS) {

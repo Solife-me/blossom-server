@@ -21,6 +21,8 @@ blossom/
 
 # Top-level node_modules (none should exist, but guard against accidental copy)
 /node_modules/
+/javascript/
+/*.s9pk
 startos/node_modules/
 startos/javascript/
 startos/*.s9pk

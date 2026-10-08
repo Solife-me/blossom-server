@@ -1,11 +1,7 @@
 import { buildBlossomConfig, randomPassword } from "../blossom-config";
 import { credentialsJson } from "../fileModels/credentials.json";
 import { blossomConfigYaml } from "../fileModels/blossom-config.yaml";
-import {
-  settingsDefaults,
-  settingsShape,
-  settingsYaml,
-} from "../fileModels/settings.yaml";
+import { settingsDefaults, settingsShape, settingsYaml } from "../fileModels/settings.yaml";
 import { i18n } from "../i18n";
 import { sdk } from "../sdk";
 
@@ -225,6 +221,13 @@ export const settingsInputSpec = InputSpec.of({
         description: i18n("Require a BUD-11 Nostr auth event."),
         default: settingsDefaults.media["require-auth"],
       }),
+      "require-pubkey-in-rule": Value.toggle({
+        name: i18n("Require Pubkey Match"),
+        description: i18n(
+          "Require the uploader pubkey to appear in a matching storage rule. Keep enabled to prevent unrestricted media processing.",
+        ),
+        default: settingsDefaults.media["require-pubkey-in-rule"],
+      }),
       "max-size-mib": Value.number({
         name: i18n("Max Media Size"),
         description: i18n("Maximum media upload size in mebibytes."),
@@ -326,6 +329,17 @@ export const settingsInputSpec = InputSpec.of({
         integer: true,
         units: "seconds",
       }),
+      "batch-size": Value.number({
+        name: i18n("Batch Size"),
+        description: i18n(
+          "Maximum blobs examined per rule during each prune cycle.",
+        ),
+        required: true,
+        default: settingsDefaults.prune["batch-size"],
+        min: 1,
+        max: 100000,
+        integer: true,
+      }),
     }),
   ),
 });
@@ -350,9 +364,7 @@ export const configure = sdk.Action.withInput(
       .read((value) => value.dashboardGeneratedPassword)
       .once()) ?? "";
     const explicitPassword = settings.dashboard.password.trim();
-    const generatedPassword = settings.dashboard.enabled && !explicitPassword
-      ? currentGenerated || randomPassword()
-      : "";
+    const generatedPassword = settings.dashboard.enabled && !explicitPassword ? currentGenerated || randomPassword() : "";
 
     await credentialsJson.merge(effects, {
       dashboardGeneratedPassword: generatedPassword,

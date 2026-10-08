@@ -12,14 +12,5 @@ if [[ ! -f "${CONFIG}" ]]; then
   exit 1
 fi
 
-exec deno run \
-  --allow-net \
-  --allow-read \
-  --allow-write \
-  --allow-env \
-  --allow-ffi \
-  --allow-sys \
-  --allow-run \
-  --unstable-bundle \
-  main.ts \
-  "${CONFIG}"
+export BLOSSOM_REQUIRE_CONFIG=1
+exec deno run -P main.ts "${CONFIG}"

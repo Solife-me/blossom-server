@@ -42,6 +42,7 @@ export const settingsDefaults = {
   media: {
     enabled: false,
     "require-auth": true,
+    "require-pubkey-in-rule": true,
     "max-size-mib": 1024,
   },
   landing: {
@@ -59,6 +60,7 @@ export const settingsDefaults = {
   prune: {
     "initial-delay-seconds": 60,
     "interval-seconds": 30,
+    "batch-size": 1000,
   },
 };
 
@@ -126,6 +128,9 @@ export const settingsShape = z.object({
     .object({
       enabled: z.boolean().catch(settingsDefaults.media.enabled),
       "require-auth": z.boolean().catch(settingsDefaults.media["require-auth"]),
+      "require-pubkey-in-rule": z
+        .boolean()
+        .catch(settingsDefaults.media["require-pubkey-in-rule"]),
       "max-size-mib": z
         .number()
         .int()
@@ -163,6 +168,11 @@ export const settingsShape = z.object({
         .int()
         .positive()
         .catch(settingsDefaults.prune["interval-seconds"]),
+      "batch-size": z
+        .number()
+        .int()
+        .positive()
+        .catch(settingsDefaults.prune["batch-size"]),
     })
     .catch(settingsDefaults.prune),
 });

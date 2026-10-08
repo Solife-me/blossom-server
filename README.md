@@ -157,6 +157,30 @@ Pass a custom config path as the first argument:
 deno task start /etc/blossom/config.yml
 ```
 
+## StartOS Package
+
+The repository includes a native StartOS package wrapper built with `@start9labs/start-sdk` 2.0. The package uses local blob storage, exposes the landing page
+and admin dashboard as StartOS interfaces, renders configuration through StartOS actions, and includes the complete `main` volume in backups.
+
+Building requires Node.js 22 or newer, Docker, `jq`, and Start CLI 1.1.0 or newer. The repository must be inside a StartOS packaging workspace; initialize the
+directory that contains this repository first:
+
+```sh
+cd ..
+start-cli s9pk init-workspace .
+cd blossom-server
+```
+
+```sh
+npm ci
+make x86 # Intel/AMD
+# or
+make arm # ARM64
+```
+
+The build produces `blossom-server_x86_64.s9pk` or `blossom-server_aarch64.s9pk` in the repository root. Use `make universal` to build a single package
+containing both architectures.
+
 ## Configuration
 
 Configuration is loaded from a YAML file (default: `config.yml` in the working directory). Environment variables can be substituted anywhere in the file using

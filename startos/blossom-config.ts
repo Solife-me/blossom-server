@@ -1,10 +1,6 @@
-import type {
-  StartOSSettings,
-  StartOSStorageRule,
-} from "./fileModels/settings.yaml";
+import type { StartOSSettings, StartOSStorageRule } from "./fileModels/settings.yaml";
 
-const PASSWORD_ALPHABET =
-  "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+const PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -15,15 +11,11 @@ function booleanOrDefault(value: unknown, fallback: boolean): boolean {
 }
 
 function nonNegativeIntegerOrDefault(value: unknown, fallback: number): number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0
-    ? value
-    : fallback;
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : fallback;
 }
 
 function positiveIntegerOrDefault(value: unknown, fallback: number): number {
-  return typeof value === "number" && Number.isInteger(value) && value > 0
-    ? value
-    : fallback;
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : fallback;
 }
 
 function bytesFromMiB(value: unknown, fallbackMiB: number): number {
@@ -33,13 +25,9 @@ function bytesFromMiB(value: unknown, fallbackMiB: number): number {
 function cleanRule(rule: StartOSStorageRule): Record<string, unknown> {
   const type = asString(rule.type) || "*";
   const expiration = asString(rule.expiration) || "1 week";
-  const pubkeys = Array.isArray(rule.pubkeys)
-    ? rule.pubkeys.map((pubkey) => asString(pubkey)).filter(Boolean)
-    : [];
+  const pubkeys = Array.isArray(rule.pubkeys) ? rule.pubkeys.map((pubkey) => asString(pubkey)).filter(Boolean) : [];
 
-  return pubkeys.length > 0
-    ? { type, expiration, pubkeys }
-    : { type, expiration };
+  return pubkeys.length > 0 ? { type, expiration, pubkeys } : { type, expiration };
 }
 
 export function randomPassword(length = 20): string {
@@ -115,7 +103,12 @@ export function buildBlossomConfig(
     media: {
       enabled: booleanOrDefault(settings.media.enabled, false),
       requireAuth: booleanOrDefault(settings.media["require-auth"], true),
+      requirePubkeyInRule: booleanOrDefault(
+        settings.media["require-pubkey-in-rule"],
+        true,
+      ),
       maxSize: bytesFromMiB(settings.media["max-size-mib"], 1024),
+      tmpDir: "/data/media-tmp",
     },
     landing: {
       enabled: booleanOrDefault(settings.landing.enabled, true),
@@ -134,11 +127,10 @@ export function buildBlossomConfig(
       enabled: booleanOrDefault(settings.report.enabled, true),
     },
     prune: {
-      initialDelayMs:
-        positiveIntegerOrDefault(settings.prune["initial-delay-seconds"], 60) *
+      initialDelayMs: positiveIntegerOrDefault(settings.prune["initial-delay-seconds"], 60) *
         1000,
-      intervalMs:
-        positiveIntegerOrDefault(settings.prune["interval-seconds"], 30) * 1000,
+      intervalMs: positiveIntegerOrDefault(settings.prune["interval-seconds"], 30) * 1000,
+      batchSize: positiveIntegerOrDefault(settings.prune["batch-size"], 1000),
     },
   };
 }

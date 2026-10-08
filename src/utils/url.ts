@@ -1,9 +1,12 @@
 import { mimeToExt } from "./mime.ts";
 
 const ENCODED_SEPARATOR_RE = /%(?:25)*(?:2f|5c)/i;
-const MAX_STATIC_PATH_CODE_POINTS = 2_048;
+// Keep the relative path below macOS's 1,024-byte PATH_MAX even when the
+// checkout root is close to the 255-byte component limit. Linux permits
+// longer paths, but public asset URLs do not need a platform-dependent limit.
+const MAX_STATIC_PATH_CODE_POINTS = 767;
 const MAX_STATIC_SEGMENT_CODE_POINTS = 255;
-const MAX_STATIC_PATH_BYTES = 2_048;
+const MAX_STATIC_PATH_BYTES = 767;
 const MAX_STATIC_SEGMENT_BYTES = 255;
 const UTF8_ENCODER = new TextEncoder();
 

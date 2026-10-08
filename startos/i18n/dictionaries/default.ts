@@ -10,28 +10,24 @@ const dict = {
   "Admin Dashboard": 6,
   "The Blossom admin dashboard.": 7,
   "Configure Blossom Server": 8,
-  "Update upload, retention, endpoint, landing page, and dashboard settings.":
-    9,
+  "Update upload, retention, endpoint, landing page, and dashboard settings.": 9,
   "Show Dashboard Credentials": 10,
   "Display the current admin dashboard login details.": 11,
   Network: 12,
   "Public Domain Override": 13,
-  "Optional bare hostname used for generated blob URLs and BUD-11 server tag validation.":
-    14,
+  "Optional bare hostname used for generated blob URLs and BUD-11 server tag validation.": 14,
   Storage: 15,
   "Delete Unowned Blobs": 16,
   "Delete blobs with no owners during prune cycles.": 17,
   "Storage Rules": 18,
-  "Ordered retention rules. The first matching rule wins. Leave empty to accept any MIME type with no expiry.":
-    19,
+  "Ordered retention rules. The first matching rule wins. Leave empty to accept any MIME type with no expiry.": 19,
   Rule: 20,
   "MIME Pattern": 21,
   "Examples: image/*, video/*, application/json, or *.": 22,
   Expiration: 23,
   "Human-readable retention duration such as 7 days, 1 week, or 1 month.": 24,
   Pubkeys: 25,
-  "Optional uploader pubkeys this rule applies to. Leave empty to match any pubkey.":
-    26,
+  "Optional uploader pubkeys this rule applies to. Leave empty to match any pubkey.": 26,
   "64-character hex pubkey": 27,
   Upload: 28,
   "Enable Upload": 29,
@@ -41,20 +37,16 @@ const dict = {
   "Max Upload Size": 33,
   "Maximum upload size in mebibytes.": 34,
   "Upload Workers": 35,
-  "Number of upload worker threads. Set to 0 to use one worker per CPU core.":
-    36,
+  "Number of upload worker threads. Set to 0 to use one worker per CPU core.": 36,
   "Require Pubkey Match": 37,
-  "Reject uploads unless the uploader pubkey appears in at least one storage rule.":
-    38,
+  "Reject uploads unless the uploader pubkey appears in at least one storage rule.": 38,
   Mirror: 39,
   "Enable Mirror": 40,
   "Enable the PUT /mirror endpoint.": 41,
   "Connect Timeout": 42,
-  "Timeout in milliseconds to connect to the origin and receive response headers. Set to 0 for no timeout.":
-    43,
+  "Timeout in milliseconds to connect to the origin and receive response headers. Set to 0 for no timeout.": 43,
   "Body Timeout": 44,
-  "Timeout in milliseconds for the full origin body transfer. Set to 0 for no timeout.":
-    45,
+  "Timeout in milliseconds for the full origin body transfer. Set to 0 for no timeout.": 45,
   List: 46,
   "Enable List": 47,
   "Enable the optional GET /list/:pubkey endpoint.": 48,
@@ -93,6 +85,9 @@ const dict = {
   "The admin dashboard is currently disabled.": 81,
   "Configuration Saved": 82,
   "Blossom Server will restart with the updated settings.": 83,
+  "Require the uploader pubkey to appear in a matching storage rule. Keep enabled to prevent unrestricted media processing.": 84,
+  "Batch Size": 85,
+  "Maximum blobs examined per rule during each prune cycle.": 86,
 } as const;
 
 export type I18nKey = keyof typeof dict;

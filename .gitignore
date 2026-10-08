@@ -17,3 +17,5 @@ startos/node_modules/
 startos/*.s9pk
 vendor
 blossom-vm.qcow2
+/javascript/
+/*.s9pk

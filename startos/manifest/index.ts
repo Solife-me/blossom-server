@@ -2,7 +2,9 @@ import { setupManifest } from "@start9labs/start-sdk";
 import { long, short } from "./i18n";
 
 export const manifest = setupManifest({
-  id: "blossom-server",
+  // The SDK Makefile reads this field to derive the package filename.
+  // deno-fmt-ignore
+  id: 'blossom-server',
   title: "Blossom Server",
   license: "MIT",
   packageRepo: "https://github.com/hzrd149/blossom-server",
@@ -22,14 +24,6 @@ export const manifest = setupManifest({
       },
       arch: ["x86_64", "aarch64"],
     },
-  },
-  alerts: {
-    install: null,
-    update: null,
-    uninstall: null,
-    restore: null,
-    start: null,
-    stop: null,
   },
   dependencies: {},
 });
