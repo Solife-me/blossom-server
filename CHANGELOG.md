@@ -4,8 +4,8 @@
 
 ### Patch Changes
 
-- Repackage the StartOS service with StartOS SDK 3.0.3 and preserve existing StartOS settings during SDK-managed file updates. The package now requires StartOS
-  0.4.0.2 or later.
+- Repackage the StartOS service with StartOS SDK 3.0.3, preserve existing StartOS settings during SDK-managed file updates, and restore direct upgrades from
+  package version 6.2.1:0. The package now requires StartOS 0.4.0.2 or later.
 
 ## 6.4.1 - 2026-10-06
 

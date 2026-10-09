@@ -1,18 +1,18 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '6.4.1:1',
+  version: '6.4.1:2',
   releaseNotes: {
     en_US:
-      'Repackages Blossom Server 6.4.1 with StartOS SDK 3.0.3, requiring StartOS 0.4.0.2 or later.',
+      'Restores direct StartOS upgrades from Blossom Server 6.2.1:0 while retaining SDK 3.0.3 and the StartOS 0.4.0.2 minimum.',
     es_ES:
-      'Reempaqueta Blossom Server 6.4.1 con StartOS SDK 3.0.3 y requiere StartOS 0.4.0.2 o posterior.',
+      'Restaura las actualizaciones directas de StartOS desde Blossom Server 6.2.1:0, manteniendo SDK 3.0.3 y el requisito minimo de StartOS 0.4.0.2.',
     de_DE:
-      'Packt Blossom Server 6.4.1 mit StartOS SDK 3.0.3 neu und erfordert StartOS 0.4.0.2 oder neuer.',
+      'Stellt direkte StartOS-Updates von Blossom Server 6.2.1:0 wieder her und behaelt SDK 3.0.3 sowie StartOS 0.4.0.2 als Mindestversion bei.',
     pl_PL:
-      'Pakuje ponownie Blossom Server 6.4.1 z StartOS SDK 3.0.3 i wymaga StartOS 0.4.0.2 lub nowszego.',
+      'Przywraca bezposrednie aktualizacje StartOS z Blossom Server 6.2.1:0, zachowujac SDK 3.0.3 i minimalna wersje StartOS 0.4.0.2.',
     fr_FR:
-      'Reconditionne Blossom Server 6.4.1 avec StartOS SDK 3.0.3 et necessite StartOS 0.4.0.2 ou version ulterieure.',
+      'Retablit les mises a jour directes de StartOS depuis Blossom Server 6.2.1:0, tout en conservant le SDK 3.0.3 et StartOS 0.4.0.2 comme version minimale.',
   },
   migrations: {
     up: async () => {},

@@ -15,7 +15,7 @@ export const v6_4_1_0 = VersionInfo.of({
       'Met a jour Blossom Server vers 6.4.1 avec des televersements renforces, une protection SSRF pour les miroirs, une diffusion plus sure du contenu actif, un elagage incremental et des correctifs de fiabilite.',
   },
   migrations: {
-    up: IMPOSSIBLE,
+    up: async () => {},
     down: IMPOSSIBLE,
   },
 })
